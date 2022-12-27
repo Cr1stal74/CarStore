@@ -1,0 +1,43 @@
+﻿@page "/companies"
+@using CarStore.Database;
+@using CarStore.Database.Entities;
+@inject Context context;
+
+<h3>Компании, представленные в нашем автосалоне:</h3>
+
+@foreach (var company in companies)
+{
+    <div class="item">
+        <img src="data:image/jpeg;base64, @(Convert.ToBase64String(context.Images.Where(x => x.Id == company.LogoPictureId).FirstOrDefault().Content))" />
+        <a href="/companies/@company.Id">@company.Name</a>
+    </div>
+}
+
+@code {
+    private List<Company> companies;
+
+    protected override void OnInitialized()
+    {
+        companies = context.Companies.ToList();
+        base.OnInitialized();
+    }
+}
+
+<style>
+    div.item {
+        vertical-align: top;
+        display: inline-block;
+        text-align: center;
+        width: 170px;
+    }
+
+    img {
+        width: 150px;
+        height: 150px;
+        background-color: grey;
+    }
+
+    .caption {
+        display: block;
+    }
+</style>

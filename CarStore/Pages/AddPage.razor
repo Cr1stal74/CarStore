@@ -1,0 +1,143 @@
+﻿@page "/add";
+@using CarStore.Database.Entities;
+@using CarStore.Database;
+@inject Context context;
+
+<PageTitle>Добавить информацию</PageTitle>
+
+<h3>Добавить компанию: </h3>
+<EditForm Model="@company" OnSubmit="@AddCompany">
+    <p>
+        Название компании:
+        <InputText id="company_name" @bind-Value="company.Name" />
+    </p>
+    <p>
+        Описание:
+        <InputTextArea id="company-description" @bind-Value="company.Description" />
+    </p>
+    <p>
+        Прикрепите логотип:
+        <InputFile id="company_pic" OnChange="@LoadImage" />
+    </p>
+    <p>
+        <button type="submit">Сохранить</button>
+    </p>
+</EditForm>
+
+<h3>Добавить автомобиль: </h3>
+
+<EditForm Model="@car" OnSubmit="@AddCar">
+    <p>
+        Модель автомобиля:
+        <InputText id="car_model" @bind-Value="car.Model" />
+    </p>
+    <p>
+        Лошадиные силы:
+        <InputNumber id="car_hp" @bind-Value="car.HorsePowers" />
+    </p>
+    <p>
+        Объём двигателя:
+        <InputNumber id="car_volume" @bind-Value="car.EngineVolume" />
+    </p>
+    <p>
+        Доступные цвета:
+        <InputText id="car_colors" @bind-Value="car.Colors" />
+    </p>
+    <p>
+        Количество дверей:
+        <InputNumber id="car_doors" @bind-Value="car.DoorsCount" />
+    </p>
+    <p>
+        Год выпуска:
+        <InputNumber id="car_year" @bind-Value="car.ReleaseYear" />
+    </p>
+    <p>
+        Стартовая цена:
+        <InputNumber id="car_price" @bind-Value="car.StartPrice" />
+    </p>
+    <p>
+        Выберите компанию:
+        <InputSelect id="car_select" @bind-Value="car.CompanyId">
+            @foreach (var com in companies)
+            {
+                <option value="@com.Id">@com.Name</option>
+            }
+        </InputSelect>
+    </p>
+    <p>
+        Прикрепите изображения автомобиля:
+        <InputFile id="car_images" OnChange="@LoadImages" multiple />
+    </p>
+    <p>
+        <button type="submit">Сохранить</button>
+    </p>
+</EditForm>
+
+@code {
+    private Company company { get; set; }
+    private Car car { get; set; }
+    private List<Company> companies { get; set; }
+    private List<IBrowserFile> loadedFiles = new();
+    private bool isLoading = false;
+    private long maxFileSize = 1024 * 1024 * 50; // 50mb
+
+    protected override void OnInitialized()
+    {
+        company = new();
+        car = new();
+        companies = context.Companies.ToList();
+        base.OnInitialized();
+    }
+
+    private async Task AddCar()
+    {
+        await context.Cars.AddAsync(car);
+        await context.SaveChangesAsync();
+        car = new();
+    }
+
+    private async Task AddCompany()
+    {
+        await context.Companies.AddAsync(company);
+        await context.SaveChangesAsync();
+        company = new();
+    }
+
+    private async Task LoadImage(InputFileChangeEventArgs e)
+    {
+        isLoading = true;
+        await using MemoryStream ms = new();
+        await e.File.OpenReadStream(maxFileSize).CopyToAsync(ms);
+        Image newImage = new()
+            {
+                Content = ms.ToArray()
+            };
+        await context.Images.AddAsync(newImage);
+        await context.SaveChangesAsync();
+        company.LogoPictureId = newImage.Id;
+        isLoading = false;
+    }
+
+    private async Task LoadImages(InputFileChangeEventArgs e)
+    {
+        isLoading = true;
+        loadedFiles.Clear();
+        List<long> imageIds = new();
+        foreach (var file in e.GetMultipleFiles())
+        {
+            loadedFiles.Add(file);
+
+            await using MemoryStream ms = new();
+            await file.OpenReadStream(maxFileSize).CopyToAsync(ms);
+            Image newImage = new()
+                {
+                    Content = ms.ToArray()
+                };
+            await context.Images.AddAsync(newImage);
+            await context.SaveChangesAsync();
+            imageIds.Add(newImage.Id);
+        }
+        car.ImageIds = imageIds.ToArray();
+        isLoading = false;
+    }
+}
